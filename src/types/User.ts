@@ -3,6 +3,7 @@ import { Rooms } from "./Room";
 export interface User {
     _id: string;
     username: string;
+    avatar: string;
     tag: string;
     email: string;
     rooms: Rooms;
