@@ -10,7 +10,8 @@ import { Server, Socket } from 'socket.io';
 import RoomService from './services/room.service';
 import UserService from './services/user.service';
 
-import { SocketUser } from './types/User';
+import { SocketUser, User } from './types/User';
+import { Room } from "./types/Room";
 
 
 // Language: typescript
@@ -55,8 +56,8 @@ io.on('connection', (socket: Socket) => {
                 socketId: socket.id,
             }
             // connect socket to rooms
-            rooms.forEach((room: any) => {
-                console.info(`> Connecting socket [${socket.id}] to room [${room._id}]`);
+            rooms.forEach((room: Room) => {
+                console.info(`> Subscribing socket [${socket.id}] to room [${room._id}]`);
                 socket.join(room._id);
             });
             // add user to user service
@@ -71,10 +72,65 @@ io.on('connection', (socket: Socket) => {
             console.error('No message or roomId found.');
             return;
         } else {
-            console.info(`> Emitting message from socket [${socket.id}] to room [${message.roomId}]`);
-
             // send message to room
+            console.info(`> Emitting message from socket [${socket.id}] to room [${message.roomId}]`);
             io.to(message.roomId).emit('receiveMessage', message);
+        }
+    });
+
+    socket.on('addRoom', (room: Room) => {
+        if (!room) {
+            console.error('No room found.');
+            return;
+        } else {
+            // first add room to room service
+            console.info(`> Creating room [${room._id}].`);
+            RoomService.addRoom(room);
+
+            // then get room participant
+            const roomParticipant: User = room.participants[0];
+            // add room to participant
+            UserService.addRoomToUser(roomParticipant._id, room);
+
+            // subscribe socket to room
+            console.info(`> Subscribing socket [${socket.id}] to room [${room._id}].`);
+            socket.join(room._id);
+        }
+    });
+
+    socket.on('addToRoom', (roomId: string, participant: User) => {
+        if (!roomId || !participant) {
+            console.error('No roomId or participant found.');
+            return;
+        } else {
+            console.info(`> Added user [${participant._id}] to room [${roomId}].`);
+
+            // add user to socket room
+            RoomService.addToRoom(roomId, participant);
+
+            // retrieve socket room
+            const socketRoom: Room = RoomService.retrieveRoom(roomId);
+            // add room to user
+            UserService.addRoomToUser(participant._id, socketRoom);
+
+            // get participant socket id
+            const participantSocketId: string = UserService.retrieveSocketId(participant._id);
+
+            if (participantSocketId) {
+                // ask user to subscribe to room
+                console.info(`> Requesting socket[${participantSocketId}] to join room [${roomId}]... ?`);
+                io.to(participantSocketId).emit('subscribeToRoomDirective', socketRoom);
+            }
+        }
+    });
+
+    socket.on('subscribeToRoomCompliance', (roomId: string) => {
+        if (roomId) {
+            console.log(`> Subscribing socket [${socket.id}] to room [${roomId}]... ✓`);
+            socket.join(roomId);
+        } else {
+            console.log(`> Could not join socket [${socket.id}] to room... X`);
+            console.error('No roomId found.');
         }
     });
 });

@@ -33,6 +33,18 @@ class RoomService implements SocketRoomService {
     public retrieveAllRooms(): Rooms {
         return this._rooms;
     }
+
+    public addRoom(room: Room): void {
+        this._rooms = [...this._rooms, room];
+    }
+    public addToRoom(roomId: string, participant: SocketUser): void {
+        this._rooms = this._rooms.map(r => {
+            if (r._id === roomId) {
+                r.participants = [...r.participants, participant];
+            }
+            return r;
+        });
+    }
 }
 
 

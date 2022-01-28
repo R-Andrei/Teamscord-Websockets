@@ -1,3 +1,4 @@
+import { Room } from '../types/Room';
 import { SocketUser, SocketUsers } from '../types/User';
 import { SocketUserService } from './user.service.d';
 
@@ -45,6 +46,22 @@ class UserService implements SocketUserService {
         return this._users;
     }
 
+    public retrieveSocketId(userId: string): string {
+        const userIndex = this._users.findIndex(u => u._id === userId);
+        if (userIndex === -1) {
+            return null;
+        }
+        return this._users[userIndex].socketId;
+    }
+
+    public addRoomToUser(userId: string, room: Room): void {
+        this._users = this._users.map(u => {
+            if (u._id === userId) {
+                u.rooms = [...u.rooms, room];
+            }
+            return u;
+        });
+    }
 }
 
 
